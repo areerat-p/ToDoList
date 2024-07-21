@@ -74,7 +74,3 @@ This is a simple To-Do List application built with Node.js and Express on the se
 - **HTML**: Markup language for the web.
 - **CSS**: Stylesheet language for presentation.
 - **JavaScript**: Client-side scripting language.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
