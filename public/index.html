@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    input[type="text"] {
+      width: 300px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      margin: 5px 0;
+      padding: 5px;
+      border: 1px solid #ccc;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+    }
+    button {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>To-Do List</h1>
+  <form id="todo-form">
+    <input type="text" id="todo-input" placeholder="Enter new to-do" required>
+    <button type="submit">Add To-Do</button>
+  </form>
+  <ul id="todo-list"></ul>
+
+  <script>
+    const apiUrl = 'http://localhost:8585/todos';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTodos();
+
+      const form = document.getElementById('todo-form');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('todo-input');
+        const text = input.value.trim();
+        if (text) {
+          await addTodo(text);
+          input.value = '';
+          loadTodos();
+        }
+      });
+
+      const todoList = document.getElementById('todo-list');
+      todoList.addEventListener('dragstart', handleDragStart);
+      todoList.addEventListener('dragover', handleDragOver);
+      todoList.addEventListener('drop', handleDrop);
+    });
+
+    async function loadTodos() {
+      const response = await fetch(apiUrl);
+      const todos = await response.json();
+      const list = document.getElementById('todo-list');
+      list.innerHTML = '';
+      todos.forEach(todo => {
+        const li = document.createElement('li');
+        li.setAttribute('draggable', true);
+        li.dataset.id = todo.id;
+        li.innerHTML = `
+          <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleComplete(${todo.id}, this.checked)">
+          ${todo.text}
+          <button onclick="deleteTodo(${todo.id})">Delete</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    async function addTodo(text) {
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text })
+      });
+    }
+
+    async function toggleComplete(id, completed) {
+      await fetch(`${apiUrl}/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ completed })
+      });
+      loadTodos();
+    }
+
+    async function deleteTodo(id) {
+      await fetch(`${apiUrl}/${id}`, {
+        method: 'DELETE'
+      });
+      loadTodos();
+    }
+
+    async function reorderTodos(orderedIds) {
+      await fetch(`${apiUrl}/reorder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderedIds })
+      });
+    }
+
+    let dragged;
+
+    function handleDragStart(e) {
+      dragged = e.target;
+      e.target.style.opacity = 0.5;
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      e.target.style.opacity = '';
+      if (e.target.tagName === 'LI' && e.target !== dragged) {
+        const list = document.getElementById('todo-list');
+        const nodes = Array.from(list.children);
+        const indexDragged = nodes.indexOf(dragged);
+        const indexDropped = nodes.indexOf(e.target);
+
+        if (indexDragged > indexDropped) {
+          list.insertBefore(dragged, e.target);
+        } else {
+          list.insertBefore(dragged, e.target.nextSibling);
+        }
+
+        const orderedIds = Array.from(list.children).map(li => li.dataset.id);
+        reorderTodos(orderedIds);
+      }
+    }
+  </script>
+</body>
+</html>
